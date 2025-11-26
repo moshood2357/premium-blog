@@ -35,7 +35,7 @@ export async function generateMetadata({
     openGraph: {
       title: post.title,
       description: post.excerpt || "Read this insightful post on our blog.",
-      url: `https://yourdomain.com/blog/${post.slug.current}`,
+      url: `https://blog.r2systemsolution.co.uk/blog/${post.slug.current}`,
       images: post.mainImage?.asset?.url
         ? [{ url: post.mainImage.asset.url, width: 800, height: 450 }]
         : [],
