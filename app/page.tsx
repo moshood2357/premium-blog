@@ -16,7 +16,7 @@ export default async function Home() {
         <div className="absolute inset-0 bg-linear-to-b from-blue-900 to-blue-950 opacity-90"></div>
 
         <Image
-          src="/file.svg"
+          src="/banner.jpg"
           width={500}
           height={500}
           className="absolute inset-0 w-full h-full object-cover opacity-40"
@@ -35,7 +35,7 @@ export default async function Home() {
 
           <Link
             href="/blog"
-            className="mt-8 inline-block px-8 py-3 text-lg rounded-full bg-white text-blue-900 font-semibold hover:bg-gray-100 transition-all duration-300"
+            className="mt-8 inline-block px-8 py-3 text-lg rounded-full bg-white text-blue-900 font-semibold hover:bg-gray-100 duration-300 transition-all transform hover:scale-105"
           >
             Explore Blog →
           </Link>

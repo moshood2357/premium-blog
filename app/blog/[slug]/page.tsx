@@ -113,7 +113,7 @@ export default async function BlogPost({ params }: PageProps) {
               <Link
                 key={rp.slug.current}
                 href={`/blog/${rp.slug.current}`}
-                className="block p-4 border rounded hover:shadow-md transition"
+                className="block p-4 border rounded hover:shadow-md transition-all duration-300 hover:scale-105"
               >
                 <h4 className="font-bold">{rp.title}</h4>
                 {rp.mainImage?.asset?.url && (
