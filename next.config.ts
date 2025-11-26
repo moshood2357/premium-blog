@@ -2,7 +2,6 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   productionBrowserSourceMaps: false,
-  output: "export", // ✅ enable static HTML export
   images: {
     remotePatterns: [
       {
