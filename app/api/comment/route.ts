@@ -1,4 +1,4 @@
-import { client } from "@/sanity/lib/client";
+import { writeClient } from "@/sanity/lib/client";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -7,7 +7,7 @@ export async function POST(req: Request) {
   if (!name || !message)
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
 
-  const newComment = await client.create({
+  const newComment = await writeClient.create({
     _type: "comment",
     post: { _type: "reference", _ref: postId },
     parent: parentId ? { _type: "reference", _ref: parentId } : null,

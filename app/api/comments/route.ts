@@ -1,5 +1,4 @@
-import { client } from "@/sanity/lib/client";
-import { NextResponse } from "next/server";
+import { readClient as client } from "@/sanity/lib/client";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -16,5 +15,5 @@ export async function GET(req: Request) {
     { postId }
   );
 
-  return NextResponse.json(comments);
+  return Response.json(comments);
 }

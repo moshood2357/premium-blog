@@ -1,4 +1,4 @@
-import { client } from "@/sanity/lib/client";
+import { readClient as client } from "@/sanity/lib/client";
 import { allPostsQuery } from "@/sanity/lib/queries";
 // import { singlePostQuery } from "@/lib/queries";
 

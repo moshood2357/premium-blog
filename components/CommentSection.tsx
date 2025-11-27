@@ -18,6 +18,7 @@ interface Props {
 export default function CommentSection({ postId }: Props) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false); // ✅ new state
 
   // Convert flat comments → nested structure
   function buildTree(list: Comment[]) {
@@ -53,18 +54,13 @@ export default function CommentSection({ postId }: Props) {
     parentId?: string
   ) {
     e.preventDefault();
+    setSubmitting(true); // ✅ start submitting
 
     const form = e.currentTarget;
     const formData = new FormData(form);
 
     const name = formData.get("name")?.toString();
     const message = formData.get("message")?.toString();
-
-    // const res = await fetch("/api/comment", {
-    //   method: "POST",
-    //   body: JSON.stringify({ postId, parentId, name, message }),
-    //   headers: { "Content-Type": "application/json" },
-    // });
 
     await fetch("/api/comment", {
       method: "POST",
@@ -76,9 +72,9 @@ export default function CommentSection({ postId }: Props) {
     const reload = await fetch(`/api/comments?postId=${postId}`);
     setComments(buildTree(await reload.json()));
 
-
-    setReplyTo(null);
     form.reset();
+    setReplyTo(null);
+    setSubmitting(false); // ✅ done submitting
   }
 
   // Recursive comment component
@@ -110,8 +106,11 @@ export default function CommentSection({ postId }: Props) {
             placeholder="Reply..."
             required
           />
-          <button className="bg-blue-600 text-white px-3 py-1 rounded">
-            Submit Reply
+          <button
+            className="bg-blue-600 text-white px-3 py-1 rounded cursor-pointer"
+            disabled={submitting} // disable while submitting
+          >
+            {submitting ? "Submitting..." : "Submit Reply"} {/* ✅ show text */}
           </button>
         </form>
       )}
@@ -142,8 +141,11 @@ export default function CommentSection({ postId }: Props) {
           className="border px-4 py-2 w-full rounded h-24"
           required
         />
-        <button className="bg-blue-600 text-white px-4 py-2 rounded">
-          Submit
+        <button
+          className="bg-blue-600 text-white px-4 py-2 rounded cursor-pointer"
+          disabled={submitting} // disable while submitting
+        >
+          {submitting ? "Submitting..." : "Submit"} {/* ✅ show text */}
         </button>
       </form>
 

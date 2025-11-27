@@ -1,5 +1,5 @@
 // app/blog/[slug]/page.tsx
-import { client } from "@/sanity/lib/client";
+import { readClient as client } from "@/sanity/lib/client";
 import { singlePostQuery, relatedPostsQuery } from "@/sanity/lib/queries";
 import { Post, RelatedPost } from "@/types";
 import { PortableText } from "@portabletext/react";
@@ -37,7 +37,7 @@ export async function generateMetadata({
       description: post.excerpt || "Read this insightful post on our blog.",
       url: `https://blog.r2systemsolution.co.uk/blog/${post.slug.current}`,
       images: post.mainImage?.asset?.url
-        ? [{ url: post.mainImage.asset.url, width: 800, height: 450 }]
+        ? [{ url: post.mainImage.asset.url, width: 700, height: 450 }]
         : [],
       type: "article",
     },
