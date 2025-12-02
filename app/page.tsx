@@ -37,7 +37,7 @@ export default async function Home() {
             href="/blog"
             className="mt-8 inline-block px-8 py-3 text-lg rounded-full bg-white text-blue-900 font-semibold hover:bg-gray-100 duration-300 transition-all transform hover:scale-105"
           >
-            Explore Blog →
+            Explore this Blog →
           </Link>
         </div>
       </section>
