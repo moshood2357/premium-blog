@@ -1,18 +1,20 @@
 import { createClient } from "next-sanity";
 
-// PUBLIC READ CLIENT (frontend)
+// Public read client
 export const readClient = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID!,
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET!,
-  apiVersion: "2024-01-01",
+  apiVersion: process.env.NEXT_PUBLIC_SANITY_API_VERSION || "2025-11-15",
   useCdn: false,
 });
 
-// PRIVATE WRITE CLIENT (server-only)
-export const writeClient = createClient({
-  projectId: process.env.SANITY_PROJECT_ID!,
-  dataset: process.env.SANITY_DATASET!,
-  apiVersion: "2024-01-01",
-  token: process.env.SANITY_WRITE_TOKEN!, // safe on server only
-  useCdn: false,
-});
+// Server-only write client
+export const writeClient = process.env.SANITY_WRITE_TOKEN
+  ? createClient({
+      projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID!, // ← FIXED
+      dataset: process.env.NEXT_PUBLIC_SANITY_DATASET!, // ← FIXED
+      apiVersion: process.env.NEXT_PUBLIC_SANITY_API_VERSION || "2025-11-15",
+      token: process.env.SANITY_WRITE_TOKEN!, // ← SECRET stays server-side
+      useCdn: false,
+    })
+  : null;
