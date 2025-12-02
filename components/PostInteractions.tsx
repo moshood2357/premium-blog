@@ -15,27 +15,53 @@ export default function PostInteractions({
 }: Props) {
   const [likes, setLikes] = useState(initialLikes);
   const [liked, setLiked] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const handleLike = async () => {
-    if (liked) return; // prevent multiple clicks
+    if (liked) return;
 
-    // Get user IP
-    const ipRes = await fetch("https://api.ipify.org?format=json");
-    const { ip } = await ipRes.json();
+    // Optimistically update the UI
+    setLikes((prev) => prev + 1);
+    setLiked(true);
 
-    const res = await fetch("/api/like", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ postId, ip }),
-    });
+    try {
+      // Get user IP
+      const ipRes = await fetch("https://api.ipify.org?format=json");
+      const { ip } = await ipRes.json();
 
-    const data = await res.json();
+      const res = await fetch("/api/like", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postId, ip }),
+      });
 
-    if (data.message === "Liked") {
-      setLikes(data.likes);
-      setLiked(true);
-    } else if (data.message === "Already liked") {
-      setLiked(true);
+      const data = await res.json();
+
+      if (data.message === "Already liked") {
+        // If already liked, revert the optimistic update
+        setLikes((prev) => prev - 1);
+      } else if (data.likes !== undefined) {
+        // Ensure UI reflects the latest likes from backend
+        setLikes(data.likes);
+      }
+    } catch (err) {
+      console.error("Error liking post:", err);
+      // Revert optimistic update on error
+      setLikes((prev) => prev - 1);
+      setLiked(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(
+        `https://blog.r2systemsolution.co.uk/blog/${slug}`
+      );
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy: ", err);
+      alert("Failed to copy link. Please copy manually.");
     }
   };
 
@@ -56,7 +82,7 @@ export default function PostInteractions({
         <a
           href={`https://twitter.com/intent/tweet?url=https://blog.r2systemsolution.co.uk/blog/${slug}`}
           target="_blank"
-          className="underline text-blue-500"
+          className="underline text-blue-500 cursor-pointer"
         >
           Share on Twitter
         </a>
@@ -64,20 +90,16 @@ export default function PostInteractions({
         <a
           href={`https://www.facebook.com/sharer/sharer.php?u=https://blog.r2systemsolution.co.uk/blog/${slug}`}
           target="_blank"
-          className="underline text-blue-700"
+          className="underline text-blue-700 cursor-pointer"
         >
           Share on Facebook
         </a>
 
         <button
-          onClick={() =>
-            navigator.clipboard.writeText(
-              `https://blog.r2systemsolution.co.uk/blog/${slug}`
-            )
-          }
-          className="underline text-gray-700"
+          onClick={handleCopy}
+          className="underline text-gray-700 cursor-pointer"
         >
-          Copy Link
+          {copied ? "Copied!" : "Copy Link"}
         </button>
       </div>
     </div>

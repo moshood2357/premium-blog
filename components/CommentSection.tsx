@@ -138,13 +138,13 @@ export default function CommentSection({ postId }: Props) {
       {!replyTo && editing !== comment._id && (
         <div className="flex gap-2 mt-1">
           <button
-            className="text-green-600 text-sm"
+            className="text-green-600 text-sm cursor-pointer"
             onClick={() => setEditing(comment._id)}
           >
             Edit
           </button>
           <button
-            className="text-red-600 text-sm"
+            className="text-red-600 text-sm cursor-pointer"
             onClick={() => handleDelete(comment._id)}
           >
             Delete
