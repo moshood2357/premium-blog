@@ -19,20 +19,17 @@ export default function CommentSection({ postId }: Props) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [submittingIds, setSubmittingIds] = useState<Record<string, boolean>>({});
 
-  // Convert flat comments → nested structure
+  // Build tree
   function buildTree(list: Comment[]) {
     const map: Record<string, Comment> = {};
     const roots: Comment[] = [];
-    list.forEach((comment) => (map[comment._id] = { ...comment, replies: [] }));
-    list.forEach((comment) => {
-      if (comment.parent?._id) {
-        map[comment.parent._id]?.replies?.push(map[comment._id]);
-      } else {
-        roots.push(map[comment._id]);
-      }
-    });
+    list.forEach((c) => (map[c._id] = { ...c, replies: [] }));
+    list.forEach((c) =>
+      c.parent?._id ? map[c.parent._id].replies!.push(map[c._id]) : roots.push(map[c._id])
+    );
     return roots;
   }
 
@@ -40,157 +37,214 @@ export default function CommentSection({ postId }: Props) {
   useEffect(() => {
     async function load() {
       const res = await fetch(`/api/comments?postId=${postId}`);
-      const data = await res.json();
-      setComments(buildTree(data));
+      const data: Comment[] = await res.json();
+
+      const tree = buildTree(data);
+
+      // Initialize collapsed state: hide all replies by default
+      const collapsedState: Record<string, boolean> = {};
+      const initCollapse = (list: Comment[]) => {
+        list.forEach((c) => {
+          if (c.replies && c.replies.length > 0) {
+            collapsedState[c._id] = true; // hide replies initially
+            initCollapse(c.replies);
+          }
+        });
+      };
+      initCollapse(tree);
+
+      setComments(tree);
+      setCollapsed(collapsedState);
     }
     load();
   }, [postId]);
 
-  // Submit comment or reply
-  async function submitComment(e: React.FormEvent<HTMLFormElement>, parentId?: string) {
+  // Submit comment/reply
+  async function submitComment(
+    e: React.FormEvent<HTMLFormElement>,
+    parentId?: string
+  ) {
     e.preventDefault();
-    setSubmitting(true);
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-    const name = formData.get("name")?.toString();
-    const message = formData.get("message")?.toString();
+    const formId = parentId || "root";
+    setSubmittingIds((prev) => ({ ...prev, [formId]: true }));
 
+    try {
+      const formData = new FormData(e.currentTarget);
+
+      await fetch("/api/comment", {
+        method: "POST",
+        body: JSON.stringify({
+          postId,
+          parentId,
+          name: formData.get("name"),
+          message: formData.get("message"),
+        }),
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const reload = await fetch(`/api/comments?postId=${postId}`);
+      setComments(buildTree(await reload.json()));
+
+      e.currentTarget.reset();
+      setReplyTo(null);
+    } catch (err) {
+      console.error("Error submitting comment:", err);
+    } finally {
+      setSubmittingIds((prev) => ({ ...prev, [formId]: false }));
+    }
+  }
+
+  // Edit comment
+  async function handleEdit(id: string, message: string) {
     await fetch("/api/comment", {
-      method: "POST",
-      body: JSON.stringify({ postId, parentId, name, message }),
+      method: "PATCH",
+      body: JSON.stringify({ id, message }),
       headers: { "Content-Type": "application/json" },
     });
 
-    const reload = await fetch(`/api/comments?postId=${postId}`);
-    setComments(buildTree(await reload.json()));
-    form.reset();
-    setReplyTo(null);
-    setSubmitting(false);
+    const update = (list: Comment[]): Comment[] =>
+      list.map((c) => ({
+        ...c,
+        message: c._id === id ? message : c.message,
+        replies: c.replies ? update(c.replies) : [],
+      }));
+
+    setComments((prev) => update(prev));
+    setEditing(null);
   }
 
   // Delete comment
   async function handleDelete(id: string) {
-    if (!confirm("Are you sure you want to delete this comment?")) return;
-    const res = await fetch(`/api/comment?id=${id}`, { method: "DELETE" });
-    if (res.ok) setComments((prev) => prev.filter((c) => c._id !== id));
+    if (!confirm("Delete this comment?")) return;
+
+    await fetch(`/api/comment?id=${id}`, { method: "DELETE" });
+
+    const remove = (list: Comment[]): Comment[] =>
+      list
+        .filter((c) => c._id !== id)
+        .map((c) => ({ ...c, replies: c.replies ? remove(c.replies) : [] }));
+
+    setComments((prev) => remove(prev));
   }
 
-  // Edit comment
-  async function handleEdit(id: string, newMessage: string) {
-    const res = await fetch("/api/comment", {
-      method: "PATCH",
-      body: JSON.stringify({ id, message: newMessage }),
-      headers: { "Content-Type": "application/json" },
-    });
-    if (res.ok) {
-      setComments((prev) =>
-        prev.map((c) => (c._id === id ? { ...c, message: newMessage } : c))
-      );
-      setEditing(null);
-    }
-  }
+  // Recursive Comment Renderer
+  const RenderComment = ({ comment, depth = 0 }: { comment: Comment; depth?: number }) => {
+    const hasReplies = comment.replies && comment.replies.length > 0;
 
-  // Recursive comment component
-  const RenderComment = ({ comment }: { comment: Comment }) => (
-    <div className="border-l pl-4 mt-4">
-      <p className="font-semibold">{comment.name}</p>
-
-      {/* Edit form */}
-      {editing === comment._id ? (
-        <form
-          className="mt-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const formData = new FormData(e.currentTarget);
-            handleEdit(comment._id, formData.get("message")!.toString());
-          }}
-        >
-          <textarea
-            name="message"
-            defaultValue={comment.message}
-            className="border px-2 py-1 rounded w-full"
-            required
-          />
-          <button type="submit" className="bg-green-600 text-white px-2 py-1 rounded">
-            Save
-          </button>
-          <button
-            type="button"
-            className="bg-gray-300 px-2 py-1 rounded ml-2"
-            onClick={() => setEditing(null)}
-          >
-            Cancel
-          </button>
-        </form>
-      ) : (
-        <p>{comment.message}</p>
-      )}
-
-      {/* Reply button */}
-      <button
-        className="text-blue-600 text-sm mt-1"
-        onClick={() => setReplyTo(comment._id)}
+    return (
+      <div
+        className="mt-6 transition-all duration-300 ease-out"
+        style={{
+          marginLeft: depth * 20,
+          borderLeft: depth > 0 ? "1px solid #e5e7eb" : "none",
+          paddingLeft: depth > 0 ? 16 : 0,
+        }}
       >
-        Reply
-      </button>
+        <p className="font-semibold">{comment.name}</p>
 
-      {/* Edit & Delete buttons */}
-      {!replyTo && editing !== comment._id && (
-        <div className="flex gap-2 mt-1">
-          <button
-            className="text-green-600 text-sm cursor-pointer"
-            onClick={() => setEditing(comment._id)}
+        {/* Edit Mode */}
+        {editing === comment._id ? (
+          <form
+            className="mt-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              handleEdit(comment._id, formData.get("message")!.toString());
+            }}
           >
-            Edit
+            <textarea
+              name="message"
+              defaultValue={comment.message}
+              className="border px-2 py-1 rounded w-full"
+              required
+            />
+            <button className="bg-green-600 text-white px-2 py-1 rounded">Save</button>
+            <button
+              type="button"
+              className="bg-gray-300 px-2 py-1 rounded ml-2"
+              onClick={() => setEditing(null)}
+            >
+              Cancel
+            </button>
+          </form>
+        ) : (
+          <p>{comment.message}</p>
+        )}
+
+        {/* Reply/Edit/Delete */}
+        <div className="flex gap-4 mt-1">
+          <button className="text-blue-600 text-sm" onClick={() => setReplyTo(comment._id)}>
+            Reply
           </button>
-          <button
-            className="text-red-600 text-sm cursor-pointer"
-            onClick={() => handleDelete(comment._id)}
-          >
-            Delete
-          </button>
+          {editing !== comment._id && (
+            <>
+              <button className="text-green-600 text-sm" onClick={() => setEditing(comment._id)}>
+                Edit
+              </button>
+              <button className="text-red-600 text-sm" onClick={() => handleDelete(comment._id)}>
+                Delete
+              </button>
+            </>
+          )}
         </div>
-      )}
 
-      {/* Reply form */}
-      {replyTo === comment._id && (
-        <form
-          className="mt-2 space-y-2"
-          onSubmit={(e) => submitComment(e, comment._id)}
-        >
-          <input
-            name="name"
-            className="border px-2 py-1 rounded w-full"
-            placeholder="Your name"
-            required
-          />
-          <textarea
-            name="message"
-            className="border px-2 py-1 rounded w-full"
-            placeholder="Reply..."
-            required
-          />
+        {/* Replies Toggle */}
+        {hasReplies && (
           <button
-            className="bg-blue-600 text-white px-3 py-1 rounded cursor-pointer"
-            disabled={submitting}
+            onClick={() =>
+              setCollapsed((prev) => ({ ...prev, [comment._id]: !prev[comment._id] }))
+            }
+            className="text-sm text-gray-600 mt-2"
           >
-            {submitting ? "Submitting..." : "Submit Reply"}
+            {collapsed[comment._id]
+              ? `Show Replies (${comment.replies!.length}) ▼`
+              : `Hide Replies ▲`}
           </button>
-        </form>
-      )}
+        )}
 
-      {/* Render replies recursively */}
-      {comment.replies?.map((reply) => (
-        <RenderComment key={reply._id} comment={reply} />
-      ))}
-    </div>
-  );
+        {/* Replies */}
+        {!collapsed[comment._id] && (
+          <div className="mt-4 ml-4 border-l pl-4 animate-fade-slide space-y-4">
+            {/* Reply Form */}
+            {replyTo === comment._id && (
+              <form className="space-y-2" onSubmit={(e) => submitComment(e, comment._id)}>
+                <input
+                  name="name"
+                  className="border px-2 py-1 rounded w-full"
+                  placeholder="Your name"
+                  required
+                />
+                <textarea
+                  name="message"
+                  className="border px-2 py-1 rounded w-full"
+                  placeholder="Reply..."
+                  required
+                />
+                <button
+                  className="bg-blue-600 text-white px-3 py-1 rounded"
+                  disabled={submittingIds[comment._id]}
+                >
+                  {submittingIds[comment._id] ? "Submitting..." : "Submit Reply"}
+                </button>
+              </form>
+            )}
+
+            {/* Nested Replies */}
+            {hasReplies &&
+              comment.replies!.map((reply) => (
+                <RenderComment key={reply._id} comment={reply} depth={depth + 1} />
+              ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="mt-10">
       <h3 className="text-2xl font-bold mb-6">Comments</h3>
 
-      {/* Comment form */}
+      {/* New Comment Form */}
       <form className="space-y-4 mb-6" onSubmit={(e) => submitComment(e)}>
         <input
           name="name"
@@ -205,14 +259,14 @@ export default function CommentSection({ postId }: Props) {
           required
         />
         <button
-          className="bg-blue-600 text-white px-4 py-2 rounded cursor-pointer"
-          disabled={submitting}
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+          disabled={submittingIds["root"]}
         >
-          {submitting ? "Submitting..." : "Submit"}
+          {submittingIds["root"] ? "Submitting..." : "Submit"}
         </button>
       </form>
 
-      {/* Render threads */}
+      {/* Render Comments */}
       {comments.map((comment) => (
         <RenderComment key={comment._id} comment={comment} />
       ))}
