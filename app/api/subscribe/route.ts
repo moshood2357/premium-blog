@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@sanity/client";
-import crypto from "crypto";
+
 
 // Initialize Sanity client (server-only)
 const client = createClient({
@@ -17,13 +17,17 @@ export async function POST(req: NextRequest) {
     if (!email) {
       return NextResponse.json({ message: "Email is required" }, { status: 400 });
     }
+    
+
+    const safeId = email.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const docId = `subscriber-${safeId}`;
 
     // Create subscriber if it doesn't exist
     await client.createIfNotExists({
-      _id: `subscriber-${crypto.randomUUID()}`,
-      _type: "subscriber",
+      _id: docId,
+      _type: "newsletterSubscriber",
       email,
-      subscribedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
     });
 
     return NextResponse.json({ message: "Saved to Sanity successfully" }, { status: 200 });

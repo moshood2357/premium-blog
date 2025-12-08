@@ -23,14 +23,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing title or url" }, { status: 400 });
     }
 
-    const subscribers = await client.fetch(`*[_type=="subscriber"]{email}`);
+    const subscribers = await client.fetch(`*[_type=="newsletterSubscriber"]{email}`);
     const emails = subscribers.map((s: { email: string }) => s.email);
 
     for (const email of emails) {
       await emailjs.send(
         process.env.EMAILJS_SERVICE_ID!,
         process.env.EMAILJS_TEMPLATE_ID!,
-        { to_email: email, post_title: title, post_url: url },
+        { to_email: email, 
+          post_title: title, 
+          post_url: url 
+        },
         process.env.EMAILJS_PUBLIC_KEY!
       );
     }

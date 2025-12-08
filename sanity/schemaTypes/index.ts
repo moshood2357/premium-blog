@@ -7,5 +7,5 @@ export const schemaTypes = [
   post,
   comment,
   like,
-   newsletterSubscriber
+  newsletterSubscriber
 ];
