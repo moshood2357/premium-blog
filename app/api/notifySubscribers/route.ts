@@ -13,31 +13,31 @@ const client = sanityClient({
 
 export async function POST(req: NextRequest) {
   try {
-    const { email } = await req.json();
-
-    if (!email) {
-      return NextResponse.json({ message: "Email is required" }, { status: 400 });
+    const secret = req.headers.get("x-sanity-secret");
+    if (secret !== process.env.SANITY_WEBHOOK_SECRET) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Optionally save to Sanity
-    await client.createIfNotExists({
-      _id: email,
-      _type: "subscriber",
-      email,
-      subscribedAt: new Date().toISOString(),
-    });
+    const { title, url } = await req.json();
+    if (!title || !url) {
+      return NextResponse.json({ error: "Missing title or url" }, { status: 400 });
+    }
 
-    // Optionally send a welcome email
-    await emailjs.send(
-      process.env.EMAILJS_SERVICE_ID!,
-      process.env.EMAILJS_TEMPLATE_ID!,
-      { user_email: email, date: new Date().toLocaleString() },
-      process.env.EMAILJS_PUBLIC_KEY!
-    );
+    const subscribers = await client.fetch(`*[_type=="subscriber"]{email}`);
+    const emails = subscribers.map((s: { email: string }) => s.email);
 
-    return NextResponse.json({ message: "Subscribed successfully" }, { status: 200 });
+    for (const email of emails) {
+      await emailjs.send(
+        process.env.EMAILJS_SERVICE_ID!,
+        process.env.EMAILJS_TEMPLATE_ID!,
+        { to_email: email, post_title: title, post_url: url },
+        process.env.EMAILJS_PUBLIC_KEY!
+      );
+    }
+
+    return NextResponse.json({ message: "Notifications sent" }, { status: 200 });
   } catch (err) {
-    console.error("Subscribe Error:", err);
-    return NextResponse.json({ message: "Failed to subscribe" }, { status: 500 });
+    console.error("NotifySubscribers Error:", err);
+    return NextResponse.json({ error: "Failed to send notifications" }, { status: 500 });
   }
 }
