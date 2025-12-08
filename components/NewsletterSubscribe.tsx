@@ -1,33 +1,42 @@
 "use client";
 
 import { useState } from "react";
+import emailjs from "@emailjs/browser";
 
 export default function NewsletterSubscribe() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState("");
+
+  const SERVICE_ID = "service_n9qfh8j";
+  const TEMPLATE_ID = "template_ceokmiq";
+  const PUBLIC_KEY = "haApIcl_okl18mmq8";
 
   async function handleSubscribe(e: React.FormEvent) {
     e.preventDefault();
     setStatus("loading");
 
     try {
+      // 1️⃣ Send welcome email via EmailJS
+      await emailjs.send(SERVICE_ID, TEMPLATE_ID, { email }, PUBLIC_KEY);
+
+      // 2️⃣ Save subscriber to Sanity
       const res = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
 
-      const data = await res.json();
-
-      if (res.ok) {
-        setStatus("success");
-        setEmail("");
-      } else {
+      if (!res.ok) {
+        const data = await res.json();
+        console.error("Sanity save error:", data.message);
         setStatus("error");
-        console.log(data.message);
+        return;
       }
+
+      setStatus("success");
+      setEmail("");
     } catch (err) {
-      console.log("Error:", err);
+      console.error("Subscription error:", err);
       setStatus("error");
     }
   }
