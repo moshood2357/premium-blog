@@ -18,7 +18,7 @@ interface Props {
 export default function CommentSection({ postId }: Props) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [replyTo, setReplyTo] = useState<string | null>(null);
-  const [editing, setEditing] = useState<string | null>(null);
+  // const [editing, setEditing] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [submittingIds, setSubmittingIds] = useState<Record<string, boolean>>({});
 
@@ -95,37 +95,37 @@ export default function CommentSection({ postId }: Props) {
   }
 
   // Edit comment
-  async function handleEdit(id: string, message: string) {
-    await fetch("/api/comment", {
-      method: "PATCH",
-      body: JSON.stringify({ id, message }),
-      headers: { "Content-Type": "application/json" },
-    });
+  // async function handleEdit(id: string, message: string) {
+  //   await fetch("/api/comment", {
+  //     method: "PATCH",
+  //     body: JSON.stringify({ id, message }),
+  //     headers: { "Content-Type": "application/json" },
+  //   });
 
-    const update = (list: Comment[]): Comment[] =>
-      list.map((c) => ({
-        ...c,
-        message: c._id === id ? message : c.message,
-        replies: c.replies ? update(c.replies) : [],
-      }));
+  //   const update = (list: Comment[]): Comment[] =>
+  //     list.map((c) => ({
+  //       ...c,
+  //       message: c._id === id ? message : c.message,
+  //       replies: c.replies ? update(c.replies) : [],
+  //     }));
 
-    setComments((prev) => update(prev));
-    setEditing(null);
-  }
+  //   setComments((prev) => update(prev));
+  //   setEditing(null);
+  // }
 
-  // Delete comment
-  async function handleDelete(id: string) {
-    if (!confirm("Delete this comment?")) return;
+  // // Delete comment
+  // async function handleDelete(id: string) {
+  //   if (!confirm("Delete this comment?")) return;
 
-    await fetch(`/api/comment?id=${id}`, { method: "DELETE" });
+  //   await fetch(`/api/comment?id=${id}`, { method: "DELETE" });
 
-    const remove = (list: Comment[]): Comment[] =>
-      list
-        .filter((c) => c._id !== id)
-        .map((c) => ({ ...c, replies: c.replies ? remove(c.replies) : [] }));
+  //   const remove = (list: Comment[]): Comment[] =>
+  //     list
+  //       .filter((c) => c._id !== id)
+  //       .map((c) => ({ ...c, replies: c.replies ? remove(c.replies) : [] }));
 
-    setComments((prev) => remove(prev));
-  }
+  //   setComments((prev) => remove(prev));
+  // }
 
   // Recursive Comment Renderer
   const RenderComment = ({ comment, depth = 0 }: { comment: Comment; depth?: number }) => {
@@ -143,7 +143,7 @@ export default function CommentSection({ postId }: Props) {
         <p className="font-semibold">{comment.name}</p>
 
         {/* Edit Mode */}
-        {editing === comment._id ? (
+        {/* {editing === comment._id ? (
           <form
             className="mt-2"
             onSubmit={(e) => {
@@ -169,14 +169,14 @@ export default function CommentSection({ postId }: Props) {
           </form>
         ) : (
           <p>{comment.message}</p>
-        )}
+        )} */}
 
         {/* Reply/Edit/Delete */}
         <div className="flex gap-4 mt-1">
           <button className="text-blue-600 text-sm" onClick={() => setReplyTo(comment._id)}>
             Reply
           </button>
-          {editing !== comment._id && (
+          {/* {editing !== comment._id && (
             <>
               <button className="text-green-600 text-sm" onClick={() => setEditing(comment._id)}>
                 Edit
@@ -185,7 +185,7 @@ export default function CommentSection({ postId }: Props) {
                 Delete
               </button>
             </>
-          )}
+          )} */}
         </div>
 
         {/* Replies Toggle */}
